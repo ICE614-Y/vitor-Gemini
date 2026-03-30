@@ -11,15 +11,12 @@ GEMINI_API_KEY 存在 Vercel 伺服器，不暴露給瀏覽器
 ## 部署步驟（約15分鐘）
 
 ### 1. GitHub
-- 前往 github.com，建立新 repository：viktorai-gemini（Private）
-- 上載三個檔案：
-  - api/gemini.js
-  - public/index.html
-  - vercel.json
+- 專案儲存庫：<https://github.com/ICE614-Y/vitor-Gemini>
+- 主要檔案：`api/gemini.js`、`public/index.html`、`vercel.json`
 
 ### 2. Vercel
 - 前往 vercel.com，用 GitHub 登入
-- 點「Add New Project」→ Import viktorai-gemini
+- 點「Add New Project」→ Import **`vitor-Gemini`**
 - Framework Preset 選「Other」
 - 點「Deploy」
 

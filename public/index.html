@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>維港AI — 社交媒體圖片生成器</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+HK:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap');
+:root{
+  --navy:#0d1f35;--blue:#1a6eb5;--blue-l:#e8f2fc;--blue-m:#3d8bd4;
+  --gold:#f0a500;--gold-l:#fff8e6;
+  --surface:#f7f9fc;--card:#fff;--border:#dde3ec;
+  --text:#1a2233;--text2:#5a6a80;--text3:#9aabbf;
+  --ok:#1a9e6e;--ok-bg:#e6f7f2;
+  --err:#d94040;--err-bg:#fff0f0;
+  --r:10px;--rl:16px;
+  --sh:0 2px 12px rgba(13,31,53,.07);
+  --sh-md:0 4px 24px rgba(13,31,53,.12);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Noto Sans HK',sans-serif;background:var(--surface);color:var(--text);min-height:100vh;font-size:14px;line-height:1.6;}
+
+.topbar{background:var(--navy);height:54px;padding:0 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.brand{display:flex;align-items:center;gap:10px;}
+.brand-logo{width:30px;height:30px;background:var(--gold);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:var(--navy);}
+.brand-name{font-size:14px;font-weight:500;color:#fff;}
+.brand-sub{font-size:11px;color:rgba(255,255,255,.4);margin-left:4px;}
+.status-dot{width:8px;height:8px;border-radius:50%;background:var(--ok);display:inline-block;margin-right:6px;}
+.status-txt{font-size:12px;color:rgba(255,255,255,.55);}
+
+.main{display:grid;grid-template-columns:360px 1fr;min-height:calc(100vh - 54px);}
+
+.sidebar{background:var(--card);border-right:1px solid var(--border);padding:20px;overflow-y:auto;max-height:calc(100vh - 54px);position:sticky;top:54px;}
+.sec{margin-bottom:18px;}
+.sec-label{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:7px;}
+
+textarea,input[type=text]{width:100%;padding:9px 11px;font-size:13px;font-family:'Noto Sans HK',sans-serif;border:1px solid var(--border);border-radius:var(--r);background:var(--surface);color:var(--text);outline:none;transition:border .15s,box-shadow .15s;}
+textarea:focus,input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(26,110,181,.1);}
+textarea{resize:vertical;}
+
+.style-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.style-btn{padding:7px 6px;font-size:12px;border:1px solid var(--border);border-radius:var(--r);background:var(--surface);cursor:pointer;text-align:center;color:var(--text2);transition:all .12s;font-family:'Noto Sans HK',sans-serif;}
+.style-btn:hover{border-color:var(--blue-m);color:var(--blue);}
+.style-btn.active{border-color:var(--blue);background:var(--blue-l);color:var(--blue);font-weight:500;}
+
+.sizes{display:flex;flex-direction:column;gap:6px;}
+.size-opt{display:flex;align-items:center;gap:9px;padding:8px 11px;border:1px solid var(--border);border-radius:var(--r);cursor:pointer;transition:border .12s,background .12s;user-select:none;}
+.size-opt:hover{border-color:var(--blue-m);background:var(--blue-l);}
+.size-opt input{width:auto;margin:0;}
+.sz-thumb{border-radius:3px;flex-shrink:0;border:1px solid;}
+.size-name{font-size:13px;font-weight:500;flex:1;}
+.size-dim{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;}
+
+.gen-btn{width:100%;padding:12px;background:var(--blue);color:#fff;border:none;border-radius:var(--r);font-size:14px;font-weight:500;font-family:'Noto Sans HK',sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;transition:background .15s,transform .1s;margin-top:4px;}
+.gen-btn:hover{background:#1560a0;}
+.gen-btn:active{transform:scale(.98);}
+.gen-btn:disabled{background:var(--border);color:var(--text3);cursor:not-allowed;transform:none;}
+.spin{width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;display:none;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+.content{padding:20px;overflow-y:auto;}
+
+.prompt-card{background:var(--card);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;box-shadow:var(--sh);margin-bottom:20px;}
+.prompt-head{padding:12px 16px;border-bottom:1px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+.prompt-head h3{font-size:13px;font-weight:500;color:var(--text2);}
+.pill{font-size:11px;padding:3px 10px;border-radius:999px;font-weight:600;}
+.pill-wait{background:var(--surface);color:var(--text3);border:1px solid var(--border);}
+.pill-thinking{background:var(--blue-l);color:var(--blue);}
+.pill-gen{background:var(--gold-l);color:#7a5200;}
+.pill-done{background:var(--ok-bg);color:var(--ok);}
+.pill-err{background:var(--err-bg);color:var(--err);}
+.prompt-body{padding:14px 16px;}
+.prompt-mono{font-size:12.5px;line-height:1.85;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px;font-family:'DM Mono',monospace;white-space:pre-wrap;word-break:break-word;min-height:64px;}
+.prompt-idle{font-size:13px;color:var(--text3);line-height:1.7;}
+
+.results-grid{display:flex;flex-direction:column;gap:20px;}
+.res-card{background:var(--card);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;box-shadow:var(--sh);}
+.res-head{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--surface);}
+.plat-pill{padding:3px 11px;border-radius:999px;font-size:11px;font-weight:700;}
+.dl-btn{padding:5px 12px;font-size:12px;border:1px solid var(--border);border-radius:6px;background:var(--card);cursor:pointer;color:var(--text2);font-family:'Noto Sans HK',sans-serif;transition:all .12s;}
+.dl-btn:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-l);}
+.dl-btn:disabled{opacity:.4;cursor:not-allowed;}
+
+.img-area{padding:16px;display:flex;align-items:center;justify-content:center;background:#eef1f6;min-height:200px;position:relative;}
+.img-area img{border-radius:8px;box-shadow:var(--sh-md);max-width:100%;max-height:420px;object-fit:contain;}
+
+.ld-ov{position:absolute;inset:0;background:rgba(238,241,246,.93);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;}
+.ld-bar{width:200px;height:4px;background:var(--border);border-radius:999px;overflow:hidden;}
+.ld-fill{height:100%;background:var(--blue);border-radius:999px;animation:lf 2s ease-in-out infinite;}
+@keyframes lf{0%{width:0;margin-left:0;}50%{width:55%;margin-left:22%;}100%{width:0;margin-left:100%;}}
+.ld-txt{font-size:13px;color:var(--text2);}
+
+.err-strip{background:var(--err-bg);border-top:1px solid #ffcccc;padding:10px 16px;font-size:12px;color:var(--err);line-height:1.7;}
+.err-strip a{color:var(--blue);}
+
+.empty{text-align:center;padding:64px 20px;color:var(--text3);}
+.empty-ico{font-size:40px;margin-bottom:14px;}
+.empty h3{font-size:16px;font-weight:500;color:var(--text2);margin-bottom:8px;}
+.empty p{font-size:13px;line-height:1.7;max-width:320px;margin:0 auto;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-logo">維</div>
+    <span class="brand-name">維港AI</span>
+    <span class="brand-sub">社交媒體圖片生成器</span>
+  </div>
+  <div>
+    <span class="status-dot"></span>
+    <span class="status-txt">已連接伺服器 — Gemini Powered</span>
+  </div>
+</div>
+
+<div class="main">
+
+  <div class="sidebar">
+    <div class="sec">
+      <div class="sec-label">帖文 Caption</div>
+      <textarea id="caption" rows="9" placeholder="貼上你的 Facebook / Instagram 帖文內容&#10;&#10;例如：&#10;校長最擔心AI嘅，其實唔係效果而係風險。如果學生資料外洩，責任係學校..."></textarea>
+    </div>
+
+    <div class="sec">
+      <div class="sec-label">圖片風格</div>
+      <div class="style-grid">
+        <div class="style-btn active" onclick="setStyle(this,'professional corporate, clean and polished')">專業商務</div>
+        <div class="style-btn" onclick="setStyle(this,'warm humanistic, soft lighting, emotional')">溫暖人文</div>
+        <div class="style-btn" onclick="setStyle(this,'clean minimalist modern, lots of whitespace')">簡約現代</div>
+        <div class="style-btn" onclick="setStyle(this,'futuristic tech, digital glow, dark background')">科技感</div>
+        <div class="style-btn" onclick="setStyle(this,'authentic classroom education school setting')">教育場景</div>
+        <div class="style-btn" onclick="setStyle(this,'Hong Kong urban authentic local atmosphere')">香港本土</div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-label">生成尺寸</div>
+      <div class="sizes">
+        <label class="size-opt">
+          <input type="checkbox" id="sz-fb" checked>
+          <div class="sz-thumb" style="width:38px;height:20px;background:#e8f0fd;border-color:#1877F2;"></div>
+          <span class="size-name">Facebook</span>
+          <span class="size-dim">1200×630</span>
+        </label>
+        <label class="size-opt">
+          <input type="checkbox" id="sz-ig" checked>
+          <div class="sz-thumb" style="width:20px;height:20px;background:#fde8f5;border-color:#C13584;"></div>
+          <span class="size-name">Instagram 方形</span>
+          <span class="size-dim">1080×1080</span>
+        </label>
+        <label class="size-opt">
+          <input type="checkbox" id="sz-st" checked>
+          <div class="sz-thumb" style="width:13px;height:22px;background:#fff3e0;border-color:#f0a500;"></div>
+          <span class="size-name">Stories / Reels</span>
+          <span class="size-dim">1080×1920</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-label">額外要求（選填）</div>
+      <input type="text" id="extra" placeholder="例：唔要人臉、加入課室場景...">
+    </div>
+
+    <button class="gen-btn" id="gen-btn" onclick="generate()">
+      <div class="spin" id="spin"></div>
+      <span id="gen-label">生成圖片</span>
+    </button>
+  </div>
+
+  <div class="content">
+
+    <div class="prompt-card">
+      <div class="prompt-head">
+        <h3>Gemini 生成的圖片 Prompt</h3>
+        <span class="pill pill-wait" id="pill">等待中</span>
+      </div>
+      <div class="prompt-body">
+        <div class="prompt-idle" id="prompt-display">
+          按下「生成圖片」後，Gemini Flash 會先分析你的 Caption 並生成英文圖片描述，再由 Gemini Imagen 3 生成三個尺寸的圖片。
+        </div>
+      </div>
+    </div>
+
+    <div id="results">
+      <div class="empty">
+        <div class="empty-ico">&#128444;</div>
+        <h3>準備好生成圖片</h3>
+        <p>輸入帖文 Caption，選擇風格和尺寸，按「生成圖片」開始。</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+let style = 'professional corporate, clean and polished';
+let saved = {};
+
+function setStyle(el, s) {
+  style = s;
+  document.querySelectorAll('.style-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function setLoading(on) {
+  document.getElementById('gen-btn').disabled = on;
+  document.getElementById('spin').style.display = on ? 'block' : 'none';
+  document.getElementById('gen-label').textContent = on ? '生成中...' : '生成圖片';
+}
+
+function setPill(txt, cls) {
+  const el = document.getElementById('pill');
+  el.textContent = txt;
+  el.className = 'pill ' + cls;
+}
+
+async function api(action, body) {
+  const res = await fetch('/api/gemini', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action, ...body })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Server error ' + res.status);
+  return data;
+}
+
+async function generate() {
+  const caption = document.getElementById('caption').value.trim();
+  const extra = document.getElementById('extra').value.trim();
+  if (!caption) { alert('請輸入帖文 Caption'); return; }
+
+  const sizes = [];
+  if (document.getElementById('sz-fb').checked) sizes.push({ id:'fb', ar:'3:2',  label:'Facebook  1200×630',    col:'#1877F2', bg:'#e8f0fd' });
+  if (document.getElementById('sz-ig').checked) sizes.push({ id:'ig', ar:'1:1',  label:'Instagram  1080×1080',  col:'#C13584', bg:'#fde8f5' });
+  if (document.getElementById('sz-st').checked) sizes.push({ id:'st', ar:'9:16', label:'Stories  1080×1920',    col:'#f0a500', bg:'#fff8e6' });
+  if (!sizes.length) { alert('請至少選擇一個尺寸'); return; }
+
+  setLoading(true);
+  saved = {};
+
+  const pDisp = document.getElementById('prompt-display');
+  pDisp.className = 'prompt-idle';
+  pDisp.textContent = 'Gemini Flash 分析 Caption 中...';
+  setPill('Step 1 — 分析中...', 'pill-thinking');
+  buildSkeletons(sizes);
+
+  // Step 1: generate prompt
+  let imgPrompt = '';
+  try {
+    const data = await api('prompt', { caption, style, extra });
+    imgPrompt = data.prompt;
+    pDisp.className = 'prompt-mono';
+    pDisp.textContent = imgPrompt;
+    setPill('Step 2 — Imagen 生成中...', 'pill-gen');
+  } catch (e) {
+    pDisp.className = 'prompt-mono';
+    pDisp.style.color = 'var(--err)';
+    pDisp.textContent = e.message;
+    setPill('失敗', 'pill-err');
+    setLoading(false);
+    return;
+  }
+
+  // Step 2: generate images in parallel
+  const jobs = sizes.map(s =>
+    api('image', { prompt: imgPrompt, aspectRatio: s.ar })
+      .then(d => ({ id: s.id, b64: d.image, ok: true }))
+      .catch(e => ({ id: s.id, err: e.message, ok: false }))
+  );
+
+  const results = await Promise.all(jobs);
+  results.forEach(r => {
+    if (r.ok) showImage(r.id, 'data:image/png;base64,' + r.b64);
+    else showError(r.id, r.err);
+  });
+
+  const allOk = results.every(r => r.ok);
+  const anyOk = results.some(r => r.ok);
+  setPill(allOk ? '完成' : anyOk ? '部分完成' : '生成失敗',
+          allOk ? 'pill-done' : anyOk ? 'pill-gen' : 'pill-err');
+  setLoading(false);
+}
+
+function buildSkeletons(sizes) {
+  document.getElementById('results').innerHTML =
+    `<div class="results-grid">${sizes.map(s => `
+      <div class="res-card" id="card-${s.id}">
+        <div class="res-head">
+          <span class="plat-pill" style="background:${s.bg};color:${s.col}">${s.label}</span>
+          <button class="dl-btn" id="dl-${s.id}" onclick="dlImg('${s.id}')" disabled>下載</button>
+        </div>
+        <div class="img-area" id="wrap-${s.id}">
+          <div class="ld-ov" id="ld-${s.id}">
+            <div class="ld-bar"><div class="ld-fill"></div></div>
+            <div class="ld-txt">Gemini Imagen 生成中...</div>
+          </div>
+        </div>
+      </div>`).join('')}
+    </div>`;
+}
+
+function showImage(id, url) {
+  saved[id] = url;
+  document.getElementById('ld-' + id)?.remove();
+  const w = document.getElementById('wrap-' + id);
+  if (w) w.innerHTML = `<img src="${url}" alt="${id}">`;
+  const btn = document.getElementById('dl-' + id);
+  if (btn) btn.disabled = false;
+}
+
+function showError(id, msg) {
+  document.getElementById('ld-' + id)?.remove();
+  const w = document.getElementById('wrap-' + id);
+  if (w) w.innerHTML = `<div style="text-align:center;padding:20px;"><p style="font-size:28px;margin-bottom:10px;">&#10060;</p><p style="font-size:12px;color:var(--err)">${msg}</p></div>`;
+  const card = document.getElementById('card-' + id);
+  if (card) {
+    const e = document.createElement('div');
+    e.className = 'err-strip';
+    e.innerHTML = `<strong>錯誤：</strong>${msg}<br>
+      <small>如顯示 permission / 403 錯誤，請確認 Gemini API Key 已開啟 Imagen API 權限。
+      前往 <a href="https://aistudio.google.com" target="_blank">aistudio.google.com</a> 確認。</small>`;
+    card.appendChild(e);
+  }
+}
+
+function dlImg(id) {
+  if (!saved[id]) return;
+  const n = { fb:'FB_1200x630', ig:'IG_1080x1080', st:'Stories_1080x1920' };
+  const a = document.createElement('a');
+  a.download = `維港AI_${n[id]}.png`;
+  a.href = saved[id];
+  a.click();
+}
+</script>
+</body>
+</html>
